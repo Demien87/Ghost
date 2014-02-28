@@ -427,6 +427,64 @@ describe('Core Helpers', function () {
         });
     });
 
+    describe('has Block Helper', function () {
+        it('has loaded has block helper', function () {
+            should.exist(handlebars.helpers.has);
+        });
+
+        it('should handle tag list that validates true', function () {
+            var fn = sinon.spy(),
+                inverse = sinon.spy();
+
+            helpers.has.call(
+                {tags: [{ name: 'foo'}, { name: 'bar'}, { name: 'baz'}]},
+                {hash: { tag: 'invalid, bar, wat'}, fn: fn, inverse: inverse}
+            );
+
+            fn.called.should.be.true;
+            inverse.called.should.be.false;
+        });
+
+        it('should handle tags with case-insensitivity', function () {
+            var fn = sinon.spy(),
+                inverse = sinon.spy();
+
+            helpers.has.call(
+                {tags: [{ name: 'ghost'}]},
+                {hash: { tag: 'GhoSt'}, fn: fn, inverse: inverse}
+            );
+
+            fn.called.should.be.true;
+            inverse.called.should.be.false;
+        });
+
+        it('should handle tag list that validates false', function () {
+            var fn = sinon.spy(),
+                inverse = sinon.spy();
+
+            helpers.has.call(
+                {tags: [{ name: 'foo'}, { name: 'bar'}, { name: 'baz'}]},
+                {hash: { tag: 'much, such, wow'}, fn: fn, inverse: inverse}
+            );
+
+            fn.called.should.be.false;
+            inverse.called.should.be.true;
+        });
+
+        it('should not do anything when an invalid attribute is given', function () {
+            var fn = sinon.spy(),
+                inverse = sinon.spy();
+
+            helpers.has.call(
+                {tags: [{ name: 'foo'}, { name: 'bar'}, { name: 'baz'}]},
+                {hash: { invalid: 'nonsense'}, fn: fn, inverse: inverse}
+            );
+
+            fn.called.should.be.false;
+            inverse.called.should.be.false;
+        });
+    });
+
     describe('url Helper', function () {
         it('has loaded url helper', function () {
             should.exist(handlebars.helpers.url);
@@ -449,7 +507,14 @@ describe('Core Helpers', function () {
             });
         });
 
-        it('should return empty string if not a post', function () {
+        it('should return the slug with a prefixed /tag/ if the context is a tag', function () {
+            helpers.url.call({name: 'the tag', slug: "the-tag", description: null, parent_id: null}).then(function (rendered) {
+                should.exist(rendered);
+                rendered.should.equal('/tag/the-tag/');
+            });
+        });
+
+        it('should return empty string if not a post or tag', function () {
             helpers.url.call({markdown: "ff", title: "title", slug: "slug"}).then(function (rendered) {
                 rendered.should.equal('');
             });
@@ -464,8 +529,54 @@ describe('Core Helpers', function () {
             });
         });
     });
-
+    
     describe('Page Url Helper', function () {
+        it('has loaded page_url helper', function () {
+            should.exist(handlebars.helpers.page_url);
+        });
+
+        it('can return a valid url', function () {
+            helpers.page_url(1).should.equal('/');
+            helpers.page_url(2).should.equal('/page/2/');
+            helpers.page_url(50).should.equal('/page/50/');
+        });
+
+        it('can return a valid url with subdirectory', function () {
+            helpers.__set__('config', function() {
+                return {
+                    paths: {'subdir': '/blog'}
+                };
+            });
+            helpers.page_url(1).should.equal('/blog/');
+            helpers.page_url(2).should.equal('/blog/page/2/');
+            helpers.page_url(50).should.equal('/blog/page/50/');
+        });
+
+        it('can return a valid url for tag pages', function () {
+            var tagContext = {
+                tagSlug: 'pumpkin'
+            };
+            helpers.page_url.call(tagContext, 1).should.equal('/tag/pumpkin/');
+            helpers.page_url.call(tagContext, 2).should.equal('/tag/pumpkin/page/2/');
+            helpers.page_url.call(tagContext, 50).should.equal('/tag/pumpkin/page/50/');
+        });
+
+        it('can return a valid url for tag pages with subdirectory', function () {
+            helpers.__set__('config', function() {
+                return {
+                    paths: {'subdir': '/blog'}
+                };
+            });
+            var tagContext = {
+                tagSlug: 'pumpkin'
+            };
+            helpers.page_url.call(tagContext, 1).should.equal('/blog/tag/pumpkin/');
+            helpers.page_url.call(tagContext, 2).should.equal('/blog/tag/pumpkin/page/2/');
+            helpers.page_url.call(tagContext, 50).should.equal('/blog/tag/pumpkin/page/50/');
+        });
+    });
+
+    describe('Page Url Helper: DEPRECATED', function () {
         it('has loaded pageUrl helper', function () {
             should.exist(handlebars.helpers.pageUrl);
         });
@@ -485,6 +596,29 @@ describe('Core Helpers', function () {
             helpers.pageUrl(1).should.equal('/blog/');
             helpers.pageUrl(2).should.equal('/blog/page/2/');
             helpers.pageUrl(50).should.equal('/blog/page/50/');
+        });
+
+        it('can return a valid url for tag pages', function () {
+            var tagContext = {
+                tagSlug: 'pumpkin'
+            };
+            helpers.pageUrl.call(tagContext, 1).should.equal('/tag/pumpkin/');
+            helpers.pageUrl.call(tagContext, 2).should.equal('/tag/pumpkin/page/2/');
+            helpers.pageUrl.call(tagContext, 50).should.equal('/tag/pumpkin/page/50/');
+        });
+
+        it('can return a valid url for tag pages with subdirectory', function () {
+            helpers.__set__('config', function() {
+                return {
+                    paths: {'subdir': '/blog'}
+                };
+            });
+            var tagContext = {
+                tagSlug: 'pumpkin'
+            };
+            helpers.pageUrl.call(tagContext, 1).should.equal('/blog/tag/pumpkin/');
+            helpers.pageUrl.call(tagContext, 2).should.equal('/blog/tag/pumpkin/page/2/');
+            helpers.pageUrl.call(tagContext, 50).should.equal('/blog/tag/pumpkin/page/50/');
         });
     });
 
@@ -585,7 +719,7 @@ describe('Core Helpers', function () {
             var tags = [{name: 'foo'}, {name: 'bar'}],
                 rendered = handlebars.helpers.tags.call(
                     {tags: tags},
-                    {"hash": {}}
+                    {"hash": {autolink: 'false'}}
                 );
             should.exist(rendered);
 
@@ -596,7 +730,7 @@ describe('Core Helpers', function () {
             var tags = [{name: 'haunted'}, {name: 'ghost'}],
                 rendered = handlebars.helpers.tags.call(
                     {tags: tags},
-                    {"hash": {separator: '|'}}
+                    {"hash": {separator: '|', autolink: 'false'}}
                 );
 
             should.exist(rendered);
@@ -608,7 +742,7 @@ describe('Core Helpers', function () {
             var tags = [{name: 'haunted'}, {name: 'ghost'}],
                 rendered = handlebars.helpers.tags.call(
                     {tags: tags},
-                    {"hash": {prefix: 'on '}}
+                    {"hash": {prefix: 'on ', autolink: 'false'}}
                 );
 
             should.exist(rendered);
@@ -620,7 +754,7 @@ describe('Core Helpers', function () {
             var tags = [{name: 'haunted'}, {name: 'ghost'}],
                 rendered = handlebars.helpers.tags.call(
                     {tags: tags},
-                    {"hash": {suffix: ' forever'}}
+                    {"hash": {suffix: ' forever', autolink: 'false'}}
                 );
 
             should.exist(rendered);
@@ -632,7 +766,7 @@ describe('Core Helpers', function () {
             var tags = [{name: 'haunted'}, {name: 'ghost'}],
                 rendered = handlebars.helpers.tags.call(
                     {tags: tags},
-                    {"hash": {suffix: ' forever', prefix: 'on '}}
+                    {"hash": {suffix: ' forever', prefix: 'on ', autolink: 'false'}}
                 );
 
             should.exist(rendered);
@@ -644,7 +778,7 @@ describe('Core Helpers', function () {
             var tags = [{name: 'haunted'}, {name: 'ghost'}],
                 rendered = handlebars.helpers.tags.call(
                     {tags: tags},
-                    {"hash": {suffix: ' &bull;', prefix: '&hellip; '}}
+                    {"hash": {suffix: ' &bull;', prefix: '&hellip; ', autolink: 'false'}}
                 );
 
             should.exist(rendered);
@@ -655,12 +789,23 @@ describe('Core Helpers', function () {
         it('does not add prefix or suffix if no tags exist', function () {
             var rendered = handlebars.helpers.tags.call(
                     {},
-                    {"hash": {prefix: 'on ', suffix: ' forever'}}
+                    {"hash": {prefix: 'on ', suffix: ' forever', autolink: 'false'}}
                 );
 
             should.exist(rendered);
 
             String(rendered).should.equal('');
+        });
+
+        it('can autolink tags to tag pages', function () {
+            var tags = [{name: 'foo', slug: 'foo-bar'}, {name: 'bar', slug: 'bar'}],
+                rendered = handlebars.helpers.tags.call(
+                    {tags: tags},
+                    {"hash": {}}
+                );
+            should.exist(rendered);
+
+            String(rendered).should.equal('<a href="/tag/foo-bar/">foo</a>, <a href="/tag/bar/">bar</a>');
         });
     });
 
@@ -845,11 +990,11 @@ describe('Core Helpers', function () {
         });
 
         it('has loaded ghostScriptTags  helper', function () {
-            should.exist(helpers.ghostScriptTags);
+            should.exist(helpers.ghost_script_tags);
         });
 
         it('outputs correct scripts for development mode', function () {
-            rendered = helpers.ghostScriptTags();
+            rendered = helpers.ghost_script_tags();
             should.exist(rendered);
             String(rendered).should.equal(
                 '<script src="/ghost/scripts/vendor.js?v=abc"></script>' +
@@ -864,7 +1009,7 @@ describe('Core Helpers', function () {
             });
 
             // with subdirectory
-            rendered = helpers.ghostScriptTags();
+            rendered = helpers.ghost_script_tags();
             should.exist(rendered);
             String(rendered).should.equal(
                 '<script src="/blog/ghost/scripts/vendor.js?v=abc"></script>' +
@@ -879,7 +1024,7 @@ describe('Core Helpers', function () {
 
             helpers.__set__('isProduction', true);
 
-            rendered = helpers.ghostScriptTags();
+            rendered = helpers.ghost_script_tags();
             should.exist(rendered);
             String(rendered).should.equal('<script src="/ghost/scripts/ghost.min.js?v=abc"></script>');
 
@@ -888,7 +1033,7 @@ describe('Core Helpers', function () {
             });
 
             // with subdirectory
-            rendered = helpers.ghostScriptTags();
+            rendered = helpers.ghost_script_tags();
             should.exist(rendered);
             String(rendered).should.equal('<script src="/blog/ghost/scripts/ghost.min.js?v=abc"></script>');
         });
@@ -904,14 +1049,14 @@ describe('Core Helpers', function () {
 
 
         it('should output the path to admin', function () {
-            rendered = helpers.adminUrl();
+            rendered = helpers.admin_url();
             should.exist(rendered);
             rendered.should.equal('/ghost');
         });
 
         it('should output the path to admin with subdirectory', function () {
             configUpdate({url: 'http://testurl.com/blog/'});
-            rendered = helpers.adminUrl();
+            rendered = helpers.admin_url();
             should.exist(rendered);
             rendered.should.equal('/blog/ghost');
         });
@@ -920,26 +1065,26 @@ describe('Core Helpers', function () {
             // no trailing slash
             configUpdate({url: 'http://testurl.com'});
 
-            rendered = helpers.adminUrl({"hash": {absolute: true}});
+            rendered = helpers.admin_url({"hash": {absolute: true}});
             should.exist(rendered);
             rendered.should.equal('http://testurl.com/ghost');
 
             // test trailing slash
             configUpdate({url: 'http://testurl.com/'});
-            rendered = helpers.adminUrl({"hash": {absolute: true}});
+            rendered = helpers.admin_url({"hash": {absolute: true}});
             should.exist(rendered);
             rendered.should.equal('http://testurl.com/ghost');
         });
 
         it('should output absolute path with subdirectory', function () {
             configUpdate({url: 'http://testurl.com/blog'});
-            rendered = helpers.adminUrl({"hash": {absolute: true}});
+            rendered = helpers.admin_url({"hash": {absolute: true}});
             should.exist(rendered);
             rendered.should.equal('http://testurl.com/blog/ghost');
         });
 
         it('should output the path to frontend if frontend is set', function () {
-            rendered = helpers.adminUrl({"hash": {frontend: true}});
+            rendered = helpers.admin_url({"hash": {frontend: true}});
             should.exist(rendered);
             rendered.should.equal('/');
         });
@@ -947,26 +1092,26 @@ describe('Core Helpers', function () {
         it('should output the absolute path to frontend if both are set', function () {
             configUpdate({url: 'http://testurl.com'});
 
-            rendered = helpers.adminUrl({"hash": {frontend: true, absolute: true}});
+            rendered = helpers.admin_url({"hash": {frontend: true, absolute: true}});
             should.exist(rendered);
             rendered.should.equal('http://testurl.com/');
 
             configUpdate({url: 'http://testurl.com/'});
-            rendered = helpers.adminUrl({"hash": {frontend: true, absolute: true}});
+            rendered = helpers.admin_url({"hash": {frontend: true, absolute: true}});
             should.exist(rendered);
             rendered.should.equal('http://testurl.com/');
         });
 
         it('should output the path to frontend with subdirectory', function () {
             configUpdate({url: 'http://testurl.com/blog/'});
-            rendered = helpers.adminUrl({"hash": {frontend: true}});
+            rendered = helpers.admin_url({"hash": {frontend: true}});
             should.exist(rendered);
             rendered.should.equal('/blog/');
         });
 
         it('should output the absolute path to frontend with subdirectory', function () {
             configUpdate({url: 'http://testurl.com/blog/'});
-            rendered = helpers.adminUrl({"hash": {frontend: true, absolute: true}});
+            rendered = helpers.admin_url({"hash": {frontend: true, absolute: true}});
             should.exist(rendered);
             rendered.should.equal('http://testurl.com/blog/');
         });
@@ -985,13 +1130,13 @@ describe('Core Helpers', function () {
                 return when({value: futureversion.join('.')});
             });
 
-            helpers.updateNotification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
+            helpers.update_notification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
                 should.exist(rendered);
 
                 rendered.should.equal(defaultOutput);
 
                 // Test classOnly option
-                return helpers.updateNotification.call({currentUser: {name: 'bob'}}, {'hash': {'classOnly': 'true'}});
+                return helpers.update_notification.call({currentUser: {name: 'bob'}}, {'hash': {'classOnly': 'true'}});
             }).then(function (rendered) {
                 should.exist(rendered);
 
@@ -1007,7 +1152,7 @@ describe('Core Helpers', function () {
                 return when({value: packageInfo.version});
             });
 
-            helpers.updateNotification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
+            helpers.update_notification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
                 should.exist(rendered);
                 rendered.should.equal('');
                 done();
@@ -1022,7 +1167,7 @@ describe('Core Helpers', function () {
                 return when({value: 'true'});
             });
 
-            helpers.updateNotification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
+            helpers.update_notification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
                 should.exist(rendered);
                 rendered.should.equal('');
                 done();
@@ -1037,7 +1182,7 @@ describe('Core Helpers', function () {
                 return when({value: futureversion.join('.')});
             });
 
-            helpers.updateNotification.call().then(function (rendered) {
+            helpers.update_notification.call().then(function (rendered) {
                 should.exist(rendered);
                 rendered.should.equal('');
                 done();

@@ -15,7 +15,6 @@
     },
     "bugs"        : "https://github.com/TryGhost/Ghost/issues",
     "contributors": "https://github.com/TryGhost/Ghost/graphs/contributors",
-    "private"     : true,
     "licenses"    : [
         {
             "type": "MIT",
@@ -25,8 +24,7 @@
     "main": "./core/index",
     "scripts": {
         "start": "node index",
-        "test": "./node_modules/.bin/grunt validate --verbose",
-        "install": "bundle install && grunt init"
+        "test": "./node_modules/.bin/grunt validate --verbose"
     },
     "engines": {
         "node": "~0.10.0"

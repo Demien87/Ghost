@@ -135,7 +135,7 @@ describe('Config', function () {
         });
 
         it('should allow specific properties to be user defined', function () {
-            var contentPath = config().paths.appRoot + '/otherContent/',
+            var contentPath = path.join(config().paths.appRoot, 'otherContent', '/'),
                 configFile = 'configFileDanceParty.js';
 
             configUpdate({
@@ -233,6 +233,19 @@ describe('Config', function () {
             configUpdate({url: 'http://my-ghost-blog.com/blog'});
             config.urlFor(testContext, testData).should.equal('/blog' + postLink);
             config.urlFor(testContext, testData, true).should.equal('http://my-ghost-blog.com/blog' + postLink);
+        });
+
+        it('should return url for a tag when asked for', function () {
+            var testContext = 'tag',
+                testData = {tag: testUtils.DataGenerator.Content.tags[0]};
+
+            configUpdate({url: 'http://my-ghost-blog.com'});
+            config.urlFor(testContext, testData).should.equal('/tag/kitchen-sink/');
+            config.urlFor(testContext, testData, true).should.equal('http://my-ghost-blog.com/tag/kitchen-sink/');
+
+            configUpdate({url: 'http://my-ghost-blog.com/blog'});
+            config.urlFor(testContext, testData).should.equal('/blog/tag/kitchen-sink/');
+            config.urlFor(testContext, testData, true).should.equal('http://my-ghost-blog.com/blog/tag/kitchen-sink/');
         });
 
     });

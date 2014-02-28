@@ -24,12 +24,44 @@ function cacheServer(server) {
 
 var middleware = {
 
+    // ### Authenticate Middleware
+    // authentication has to be done for /ghost/* routes with
+    // exceptions for signin, signout, signup, forgotten, reset only
+    // api and frontend use different authentication mechanisms atm
+    authenticate: function (req, res, next) {
+        var noAuthNeeded = [
+                '/ghost/signin/', '/ghost/signout/', '/ghost/signup/',
+                '/ghost/forgotten/', '/ghost/reset/'
+            ],
+            subPath;
+
+        // SubPath is the url path starting after any default subdirectories
+        // it is stripped of anything after the two levels `/ghost/.*?/` as the reset link has an argument
+        subPath = req.path.substring(config().paths.subdir.length);
+        /*jslint regexp:true, unparam:true*/
+        subPath = subPath.replace(/^(\/.*?\/.*?\/)(.*)?/, function (match, a) {
+            return a;
+        });
+
+        if (res.isAdmin) {
+            if (subPath.indexOf('/ghost/api/') === 0) {
+                return middleware.authAPI(req, res, next);
+            }
+
+            if (noAuthNeeded.indexOf(subPath) < 0) {
+                return middleware.auth(req, res, next);
+            }
+        }
+        next();
+    },
+
     // ### Auth Middleware
     // Authenticate a request by redirecting to login if not logged in.
     // We strip /ghost/ out of the redirect parameter for neatness
     auth: function (req, res, next) {
         if (!req.session.user) {
-            var reqPath = req.path.replace(/^\/ghost\/?/gi, ''),
+            var subPath = req.path.substring(config().paths.subdir.length),
+                reqPath = subPath.replace(/^\/ghost\/?/gi, ''),
                 redirect = '',
                 msg;
 
