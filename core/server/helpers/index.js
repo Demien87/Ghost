@@ -1,7 +1,6 @@
 var downsize        = require('downsize'),
     hbs             = require('express-hbs'),
     moment          = require('moment'),
-    path            = require('path'),
     polyglot        = require('node-polyglot').instance,
     _               = require('lodash'),
     when            = require('when'),
@@ -96,7 +95,7 @@ coreHelpers.encode = function (context, str) {
 // context.
 //
 coreHelpers.page_url = function (context, block) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     var url = config().paths.subdir;
 
     if (this.tagSlug !== undefined) {
@@ -125,7 +124,7 @@ coreHelpers.pageUrl = function (context, block) {
                     'The helper pageUrl has been replaced with page_url in Ghost 0.5, and will be removed entirely in Ghost 0.6\n' +
                     'In your theme\'s pagination.hbs file, pageUrl should be renamed to page_url');
 
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     var self = this;
 
     return coreHelpers.page_url.call(self, context, block);
@@ -198,7 +197,7 @@ coreHelpers.asset = function (context, options) {
 // if the author could not be determined.
 //
 coreHelpers.author = function (context, options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     return this.author ? this.author.name : '';
 };
 
@@ -320,11 +319,25 @@ coreHelpers.excerpt = function (options) {
 //
 // Returns the config value for fileStorage.
 coreHelpers.file_storage = function (context, options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     if (config().hasOwnProperty('fileStorage')) {
         return config().fileStorage.toString();
     }
-    return "true";
+    return 'true';
+};
+
+// ### Apps helper
+//
+// *Usage example:*
+// `{{apps}}`
+//
+// Returns the config value for apps.
+coreHelpers.apps = function (context, options) {
+    /*jshint unused:false*/
+    if (config().hasOwnProperty('apps')) {
+        return config().apps.toString();
+    }
+    return 'false';
 };
 
 coreHelpers.ghost_script_tags = function () {
@@ -345,8 +358,9 @@ coreHelpers.ghost_script_tags = function () {
  */
 
 coreHelpers.body_class = function (options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     var classes = [],
+        post = this.post,
         tags = this.post && this.post.tags ? this.post.tags : this.tags || [],
         page = this.post && this.post.page ? this.post.page : this.page || false;
 
@@ -366,14 +380,31 @@ coreHelpers.body_class = function (options) {
         classes.push('page');
     }
 
-    return filters.doFilter('body_class', classes).then(function (classes) {
-        var classString = _.reduce(classes, function (memo, item) { return memo + ' ' + item; }, '');
-        return new hbs.handlebars.SafeString(classString.trim());
+    return api.settings.read('activeTheme').then(function (activeTheme) {
+        var paths = config().paths.availableThemes[activeTheme.value],
+            view;
+
+        if (post) {
+            view = template.getThemeViewForPost(paths, post).split('-');
+
+            // If this is a page and we have a custom page template
+            // then we need to modify the class name we inject
+            // e.g. 'page-contact' is outputted as 'page-template-contact'
+            if (view[0] === 'page' && view.length > 1) {
+                view.splice(1, 0, 'template');
+                classes.push(view.join('-'));
+            }
+        }
+
+        return filters.doFilter('body_class', classes).then(function (classes) {
+            var classString = _.reduce(classes, function (memo, item) { return memo + ' ' + item; }, '');
+            return new hbs.handlebars.SafeString(classString.trim());
+        });
     });
 };
 
 coreHelpers.post_class = function (options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     var classes = ['post'],
         tags = this.post && this.post.tags ? this.post.tags : this.tags || [],
         featured = this.post && this.post.featured ? this.post.featured : this.featured || false,
@@ -398,7 +429,7 @@ coreHelpers.post_class = function (options) {
 };
 
 coreHelpers.ghost_head = function (options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     var self = this,
         blog = config.theme(),
         head = [],
@@ -423,11 +454,11 @@ coreHelpers.ghost_head = function (options) {
 };
 
 coreHelpers.ghost_foot = function (options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     var foot = [];
 
     foot.push(scriptTemplate({
-        source: config().paths.subdir + '/shared/vendor/jquery/jquery.js',
+        source: config().paths.subdir + '/public/jquery.js',
         version: coreHelpers.assetHash
     }));
 
@@ -438,16 +469,18 @@ coreHelpers.ghost_foot = function (options) {
 };
 
 coreHelpers.meta_title = function (options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     var title = "",
         blog;
 
     if (_.isString(this.relativeUrl)) {
+        blog = config.theme();
         if (!this.relativeUrl || this.relativeUrl === '/' || this.relativeUrl === '' || this.relativeUrl.match(/\/page/)) {
-            blog = config.theme();
             title = blog.title;
         } else if (this.post) {
             title = this.post.title;
+        } else if (this.tag) {
+            title = this.tag.name + ' - ' + blog.title;
         }
     }
 
@@ -458,7 +491,7 @@ coreHelpers.meta_title = function (options) {
 };
 
 coreHelpers.meta_description = function (options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     var description,
         blog;
 
@@ -607,7 +640,7 @@ coreHelpers.has = function (options) {
 // `{{pagination}}`
 // Outputs previous and next buttons, along with info about the current page
 coreHelpers.pagination = function (options) {
-    /*jslint unparam:true*/
+    /*jshint unused:false*/
     if (!_.isObject(this.pagination) || _.isFunction(this.pagination)) {
         errors.logAndThrowError('pagination data is not an object or is a function');
         return;
@@ -766,6 +799,8 @@ registerHelpers = function (adminHbs, assetHash) {
     registerAdminHelper('ghost_script_tags', coreHelpers.ghost_script_tags);
 
     registerAdminHelper('file_storage', coreHelpers.file_storage);
+
+    registerAdminHelper('apps', coreHelpers.apps);
 
     registerAdminHelper('admin_url', coreHelpers.admin_url);
 

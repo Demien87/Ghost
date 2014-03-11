@@ -3,13 +3,14 @@ var _              = require('lodash'),
     when           = require('when'),
     errors         = require('../errorHandling'),
     Showdown       = require('showdown'),
-    github         = require('../../shared/vendor/showdown/extensions/github'),
-    typography     = require('../../shared/vendor/showdown/extensions/typography'),
+    github         = require('../../shared/lib/showdown/extensions/github'),
+    typography     = require('../../shared/lib/showdown/extensions/typography'),
     converter      = new Showdown.converter({extensions: [typography, github]}),
     User           = require('./user').User,
     Tag            = require('./tag').Tag,
     Tags           = require('./tag').Tags,
     ghostBookshelf = require('./base'),
+    validation     = require('../data/validation'),
 
     Post,
     Posts;
@@ -37,16 +38,11 @@ Post = ghostBookshelf.Model.extend({
     },
 
     validate: function () {
-        ghostBookshelf.validator.check(this.get('title'), "Post title cannot be blank").notEmpty();
-        ghostBookshelf.validator.check(this.get('title'), 'Post title maximum length is 150 characters.').len(0, 150);
-        ghostBookshelf.validator.check(this.get('slug'), "Post title cannot be blank").notEmpty();
-        ghostBookshelf.validator.check(this.get('slug'), 'Post title maximum length is 150 characters.').len(0, 150);
-
-        return true;
+        validation.validateSchema(this.tableName, this.toJSON());
     },
 
     saving: function (newPage, attr, options) {
-        /*jslint unparam:true*/
+        /*jshint unused:false*/
         var self = this;
 
         // keep tags for 'saved' event
@@ -80,7 +76,7 @@ Post = ghostBookshelf.Model.extend({
     },
 
     creating: function (newPage, attr, options) {
-        /*jslint unparam:true*/
+        /*jshint unused:false*/
 
         // set any dynamic default properties
         if (!this.get('author_id')) {
@@ -91,7 +87,7 @@ Post = ghostBookshelf.Model.extend({
     },
 
     updateTags: function (newPost, attr, options) {
-        /*jslint unparam:true*/
+        /*jshint unused:false*/
         var self = this;
         options = options || {};
 
